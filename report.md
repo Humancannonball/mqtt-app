@@ -120,7 +120,7 @@ The application successfully launched and displayed a QR code that could be scan
 I installed the required Python packages:
 
 ```bash
-pip install paho-mqtt selenium webdriver_manager beautifulsoup4 requests
+pip install paho-mqtt requests beautifulsoup4 lxml
 ```
 
 ### Configuring the MQTT Subscriber
@@ -134,16 +134,109 @@ MQTT_BROKER = "192.168.31.9"  # My broker's IP address
 MQTT_PORT = 1883  # Standard MQTT port
 ```
 
-### IMDB Search Functionality
+### AliExpress Search Implementation
 
-A significant challenge was enhancing the IMDB search functionality, which initially just returned to the main page rather than providing specific movie information. I implemented a multi-layered approach in `imdb.py`:
+I developed a robust AliExpress search functionality to provide product information to the mobile app. The implementation in `aliexpress.py` utilizes multiple techniques to handle AliExpress's dynamic website structure:
 
-1. Primary method using requests and BeautifulSoup to parse search results
-2. Multiple selectors to handle IMDB's changing layout
-3. Structured data extraction using JSON-LD when available
-4. Fallbacks to ensure some results are always returned
+#### 1. Multi-layered Search Approach
 
-This significantly improved the reliability of the movie search functionality, consistently returning detailed information instead of just the main page.
+The search process follows these sequential steps:
+1. Format and encode the search query for URL compatibility
+2. Construct the AliExpress search URL and open it in a browser
+3. Make an HTTP request to fetch the search results page
+4. Process the page content using multiple extraction methods
+5. Return structured product data or fallback to basic information
+
+```python
+def aliexpress_search(query):
+    print(f"Searching AliExpress for: {query}")
+    start_time = time.time()
+    
+    try:
+        # Format query for URL
+        formatted_query = quote_plus(query)
+        
+        # AliExpress search URL
+        search_url = f"https://www.aliexpress.com/wholesale?SearchText={formatted_query}"
+        
+        # Open the search URL in browser
+        webbrowser.open(search_url)
+        print(f"Opening AliExpress search URL: {search_url}")
+        
+        # Rest of implementation...
+```
+
+#### 2. Product Data Extraction Strategies
+
+The implementation uses three different strategies to extract product information:
+
+1. **JSON Data Extraction**: Looks for embedded JSON data within script tags that contains structured product information
+   ```python
+   # Try to find product data in JSON format
+   json_data = extract_json_data(soup)
+   if json_data:
+       return json_data
+   ```
+
+2. **Direct HTML Parsing**: When JSON data isn't available, it parses the HTML structure directly using various selectors that adapt to AliExpress's changing layout
+   ```python
+   # If no JSON data, try direct HTML parsing
+   html_data = extract_html_data(soup, query, search_url)
+   if html_data:
+       return html_data
+   ```
+
+3. **Fallback Mechanism**: If both primary methods fail, it extracts basic product links to ensure some results are returned
+   ```python
+   # Try to find any elements with product info
+   all_links = soup.find_all('a', href=True)
+   product_links = [link for link in all_links if 'item/' in link.get('href', '')]
+   ```
+
+#### 3. Robust Error Handling
+
+The implementation includes comprehensive error handling to ensure the search never crashes or hangs:
+
+1. **Request Timeouts**: Prevents the search from hanging indefinitely
+   ```python
+   # Add a timeout to ensure the function doesn't hang indefinitely
+   response = requests.get(search_url, headers=headers, timeout=10)
+   ```
+
+2. **Traceback Logging**: Detailed error information for debugging
+   ```python
+   except Exception as e:
+       print(f"AliExpress search error: {e}")
+       print(traceback.format_exc())  # Print full traceback for debugging
+   ```
+
+3. **Default Results**: Always returns at least basic search information even if extraction fails
+   ```python
+   def basic_result(query, url):
+       """Create a basic result when detailed extraction fails"""
+       return {
+           'query': str(query),
+           'url_content': str(url),
+           'products': [
+               {
+                   'title': f"Search results for {query}",
+                   'price': "See website for prices",
+                   'image': "",
+                   'url': url
+               }
+           ]
+       }
+   ```
+
+#### 4. Performance Monitoring
+
+The implementation includes timing information to monitor search performance:
+```python
+elapsed = time.time() - start_time
+print(f"Search completed in {elapsed:.2f} seconds")
+```
+
+A test of the search functionality with the query "Saw" completed in 1.84 seconds and successfully extracted information for 5 products, demonstrating the efficiency and reliability of the implementation.
 
 ### Running the Backend
 
@@ -181,15 +274,17 @@ The backend successfully processed different message formats:
    Opening URL: https://www.google.com
    ```
 
-2. **IMDB Searches**: Messages with the format `imdb:MOVIE_NAME` triggered movie searches, opening the relevant page and returning structured data:
+2. **AliExpress Searches**: Messages with the format `ali:PRODUCT_NAME` triggered product searches, opening the relevant page and returning structured data:
    ```
-   [2025-04-12 16:42:30] Received message on expo/test: imdb:Saw
-   Searching IMDB for: Saw
-   Using requests-based search method
-   Opening movie URL: https://www.imdb.com/title/tt0387564/?ref_=fn_ttl_ttl_1
-   Successfully extracted structured data for: Saw
-   Search complete. Found: Saw
-   IMDB results published to expo/result
+   [2025-04-12 17:13:30] Received message on expo/test: ali:Saw
+   Searching AliExpress for: Saw
+   Opening AliExpress search URL: https://www.aliexpress.com/wholesale?SearchText=Saw
+   No product cards found with main selectors, trying fallback selectors
+   Found 10 product links as fallback
+   Successfully extracted 5 products
+   Search completed in 1.84 seconds
+   Total search time: 1.84 seconds
+   AliExpress results published to expo/result
    ```
 
 3. **Regular Messages**: Any other text was logged with a timestamp and echoed back to confirm receipt.
@@ -200,7 +295,7 @@ The enhanced code successfully handles:
 
 - **Connection Reliability**: Automatic reconnection if the connection is lost
 - **Message Processing**: Parsing different message formats and executing appropriate actions
-- **Data Extraction**: Reliable movie data extraction from IMDB using multiple methods
+- **Data Extraction**: Reliable product data extraction from AliExpress using multiple methods
 - **Error Handling**: Graceful recovery from errors with meaningful fallbacks
 
 ## Port Differences: 8000 vs. 1883

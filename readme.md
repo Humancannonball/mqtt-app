@@ -139,9 +139,9 @@ pip install paho-mqtt selenium webdriver_manager beautifulsoup4 requests
 ### 2. Configure Python Backend
 The Python backend consists of two main files:
 - `mqtt_sub.py`: Handles MQTT communication and message processing
-- `imdb.py`: Provides movie search functionality via web scraping
+- `aliexpress.py`: Provides product search functionality via web scraping
 
-Ensure both files are in the same directory. The `mqtt_sub.py` script imports functions from `imdb.py`.
+Ensure both files are in the same directory. The `mqtt_sub.py` script imports functions from `aliexpress.py`.
 
 Update the MQTT broker connection in `mqtt_sub.py` to match your network configuration:
 
@@ -164,15 +164,15 @@ It means you're using Paho MQTT v2.0+, which requires a callback API version par
 client = mqtt.Client(client_id="PythonSubscriber", callback_api_version=mqtt.CallbackAPIVersion.VERSION1)
 ```
 
-### Improved IMDB Search Functionality
-The IMDB search functionality has been enhanced to use a multi-layered approach:
+### Improved AliExpress Search Functionality
+The AliExpress search functionality has been implemented to use a multi-layered approach:
 
-1. **Primary Method**: Uses Selenium to navigate to search results and extract structured data
-2. **Direct Search URL**: If regular search fails, tries a more direct search URL approach
-3. **Fallback Method**: If Selenium approaches fail, uses a requests/BeautifulSoup based approach
+1. **Primary Method**: Uses requests to access the AliExpress search page
+2. **Structured Data Extraction**: Attempts to extract embedded JSON product data
+3. **Direct HTML Parsing**: Falls back to direct HTML parsing if structured data is unavailable
 4. **Error Recovery**: Includes multiple fallback mechanisms to ensure some results are always returned
 
-This makes the search more reliable across different network conditions and IMDB website updates.
+This makes the search more reliable across different network conditions and AliExpress website updates.
 
 ### 3. Run the Python Backend
 Start the Python backend subscriber with:
@@ -192,7 +192,7 @@ The Python backend recognizes special command formats in messages:
 | Command Format | Example | Action |
 |----------------|---------|--------|
 | `open:URL` | `open:https://google.com` | Opens the specified URL in your default browser |
-| `imdb:MOVIE_NAME` | `imdb:The Matrix` | Searches IMDB for the movie and opens results |
+| `ali:PRODUCT_NAME` | `ali:wireless headphones` | Searches AliExpress for the product and opens results |
 | Any other text | `Hello World` | Logs the message with timestamp |
 
 All results and confirmations are published back to the `expo/result` topic for two-way communication.
@@ -211,8 +211,8 @@ All results and confirmations are published back to the `expo/result` topic for 
    - Verify it appears in MQTTX and the Python console
    - Send a message "open:https://www.google.com"
    - Verify a browser opens on your system
-   - Send a message "imdb:The Matrix"
-   - Verify IMDB search runs and browser opens with results
+   - Send a message "ali:wireless headphones"
+   - Verify AliExpress search runs and browser opens with results
    - Check for response on the `expo/result` topic
 
 ## Troubleshooting

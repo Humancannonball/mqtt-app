@@ -2,7 +2,7 @@ import paho.mqtt.client as mqtt
 import webbrowser
 import subprocess
 import json
-from imdb import imdb_search
+from aliexpress import aliexpress_search
 import datetime
 import time
 
@@ -53,20 +53,17 @@ def on_message(client, userdata, message):
         # Send confirmation back to EXPO app
         client.publish("expo/result", f"Opened URL: {url}")
         
-    elif msg_content.startswith("imdb:"):
-        # Extract movie name and search IMDB
-        movie_name = msg_content[5:]  # Remove "imdb:" prefix
-        print(f"Searching IMDB for: {movie_name}")
+    elif msg_content.startswith("ali:"):
+        # Extract product name and search AliExpress
+        product_name = msg_content[4:]  # Remove "ali:" prefix
+        print(f"Searching AliExpress for: {product_name}")
         try:
-            content = imdb_search(movie_name)
-            # Open the movie URL in browser
-            if 'url_content' in content:
-                webbrowser.open(content['url_content'])
+            content = aliexpress_search(product_name)
             # Publish result back to MQTT as JSON
             client.publish("expo/result", json.dumps(content))
-            print(f"IMDB results published to expo/result")
+            print(f"AliExpress results published to expo/result")
         except Exception as e:
-            error_msg = f"Error searching IMDB: {e}"
+            error_msg = f"Error searching AliExpress: {e}"
             print(error_msg)
             client.publish("expo/result", json.dumps({"error": error_msg}))
     
