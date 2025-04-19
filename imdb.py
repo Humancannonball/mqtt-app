@@ -134,12 +134,12 @@ def fallback_search_with_requests(query):
             
             # Ensure path starts with /title/
             if '/title/' in movie_path:
-                # Make sure we have a full URL
+                # Make sure we have a full URL with https://
                 movie_url = f"https://www.imdb.com{movie_path}" if movie_path.startswith('/') else movie_path
+                if not movie_url.startswith('http'):
+                    movie_url = f"https://{movie_url}"
                 
-                # Open in browser
-                webbrowser.open(movie_url)
-                print(f"Opening movie URL: {movie_url}")
+                print(f"Found movie URL: {movie_url}")
                 
                 # Get the movie page
                 movie_response = requests.get(movie_url, headers=headers)
@@ -169,7 +169,9 @@ def fallback_search_with_requests(query):
                         result = {
                             'name': json_ld.get('name', movie_title),
                             'description': json_ld.get('description', ''),
-                            'url_content': movie_url,
+                            'url_content': movie_url,  # Ensure this is the complete URL
+                            'url': movie_url,  # Add alternate field for more compatibility
+                            'open_url': movie_url,  # Explicitly add field for opening
                             'image': json_ld.get('image', ''),
                             'genre': ','.join(json_ld.get('genre', [])),
                             'actors': ','.join([actor.get('name', '') for actor in json_ld.get('actor', [])[:5]]),
@@ -178,6 +180,7 @@ def fallback_search_with_requests(query):
                         
                         print(f"Successfully extracted structured data for: {result['name']}")
                         return result
+                
                 except Exception as e:
                     print(f"Error extracting structured data: {e}")
                 
@@ -255,6 +258,8 @@ def fallback_search_with_requests(query):
                         'name': title,
                         'description': description,
                         'url_content': movie_url,
+                        'url': movie_url,
+                        'open_url': movie_url,  # Explicit field for opening
                         'image': image_url,
                         'genre': ','.join(genres),
                         'actors': ','.join(actors[:5]),  # Limit to first 5 actors
@@ -283,28 +288,36 @@ def fallback_search_with_requests(query):
                         continue  # Skip category links
                     
                     movie_url = f"https://www.imdb.com{href}" if href.startswith('/') else href
-                    webbrowser.open(movie_url)
                     
                     return basic_result(title.text.strip(), movie_url)
         except Exception as e:
             print(f"Error extracting any movie from search: {e}")
         
         # If all else fails, just open the search page
-        webbrowser.open(search_url)
         return basic_result(query, search_url)
         
     except Exception as e:
         print(f"Fallback search error: {e}")
         search_url = f"https://www.imdb.com/find/?q={formatted_query}"
-        webbrowser.open(search_url)
+        
+        # Ensure search URL has http/https prefix
+        if not search_url.startswith('http'):
+            search_url = f"https://{search_url}"
+            
         return basic_result(query, search_url)
 
 def basic_result(title, url):
     """Create a basic result when detailed extraction fails"""
+    # Ensure URL has http/https prefix
+    if url and not url.startswith('http'):
+        url = f"https://{url}"
+        
     return {
         'name': title,
         'description': f"Search results for {title}",
         'url_content': url,
+        'url': url,
+        'open_url': url,  # Explicit field for opening
         'image': '',
         'genre': '',
         'actors': '',

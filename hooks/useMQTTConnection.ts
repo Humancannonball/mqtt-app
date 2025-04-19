@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform, Linking, Alert } from 'react-native';
 
 export function useMQTTConnection() {
   const [messages, setMessages] = useState<Array<{ text: string; time: string; topic: string }>>([]);
@@ -9,6 +11,108 @@ export function useMQTTConnection() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const clientRef = useRef<any>(null);
+
+  const openURL = async (url: string) => {
+    try {
+      console.log(`Attempting to open URL: ${url}`);
+      
+      // Make sure URL has a protocol
+      let formattedUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        formattedUrl = `https://${url}`;
+        console.log(`Added https protocol: ${formattedUrl}`);
+      }
+      
+      if (Platform.OS === 'web') {
+        window.open(formattedUrl, '_blank');
+        console.log(`Opened URL in browser tab: ${formattedUrl}`);
+      } else {
+        // Show loading indicator to user
+        setIsLoading(true);
+        
+        try {
+          await WebBrowser.openBrowserAsync(formattedUrl);
+          console.log(`Opened URL with WebBrowser: ${formattedUrl}`);
+        } catch (error) {
+          console.error('WebBrowser error:', error);
+          // Fallback to basic linking
+          try {
+            const supported = await Linking.canOpenURL(formattedUrl);
+            if (supported) {
+              await Linking.openURL(formattedUrl);
+              console.log(`Opened URL with Linking: ${formattedUrl}`);
+            } else {
+              console.error(`Cannot open URL: ${formattedUrl}`);
+              Alert.alert("Cannot Open Link", `Unable to open: ${formattedUrl}`);
+            }
+          } catch (linkError) {
+            console.error('Linking error:', linkError);
+            Alert.alert("Error Opening Link", "Please try again later");
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error in openURL:', error);
+      setError(`Failed to open link: ${error.message}`);
+      setIsLoading(false);
+    }
+  };
+
+  const handleMessage = (message: any) => {
+    console.log("Message arrived:", {
+      payload: message.payloadString,
+      topic: message.destinationName,
+      qos: message.qos
+    });
+    
+    const time = new Date().toLocaleTimeString();
+    setReceivedMessages(prev => [...prev, {
+      text: message.payloadString,
+      time,
+      topic: message.destinationName
+    }]);
+    
+    // Handle special messages
+    if (message.destinationName === 'expo/result') {
+      const content = message.payloadString;
+      
+      // Handle URL opening commands
+      if (content.startsWith('open_url:')) {
+        const url = content.substring(9); // Remove 'open_url:' prefix
+        console.log("Received direct URL to open:", url);
+        openURL(url);
+      } else {
+        // Try to parse JSON responses (especially from IMDB search)
+        try {
+          const jsonContent = JSON.parse(content);
+          console.log("Parsed JSON response:", jsonContent);
+          
+          // Check for any URL field to open (try multiple possible fields)
+          const urlToOpen = jsonContent.open_url || jsonContent.url_content || 
+                           jsonContent.url || jsonContent.link;
+                           
+          if (urlToOpen) {
+            console.log("Found URL in JSON response:", urlToOpen);
+            openURL(urlToOpen);
+          }
+          
+          // Add a received message for the content
+          if (jsonContent.name) {
+            setReceivedMessages(prev => [...prev, {
+              text: `Found: ${jsonContent.name} - ${jsonContent.description || ''}`,
+              time: new Date().toLocaleTimeString(),
+              topic: 'IMDB Result'
+            }]);
+          }
+        } catch (e) {
+          // Not a JSON message or no URL to open, just display the message
+          console.log("Not a JSON message or no URL to open");
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const initializeMQTT = async () => {
@@ -28,20 +132,7 @@ export function useMQTTConnection() {
           `expo-mqtt-${Math.random().toString(16).substr(2, 8)}`
         );
 
-        client.onMessageArrived = (message: any) => {
-          console.log("Message arrived:", {
-            payload: message.payloadString,
-            topic: message.destinationName,
-            qos: message.qos
-          });
-          
-          const time = new Date().toLocaleTimeString();
-          setReceivedMessages(prev => [...prev, {
-            text: message.payloadString,
-            time,
-            topic: message.destinationName
-          }]);
-        };
+        client.onMessageArrived = handleMessage;
 
         client.onConnectionLost = (responseObject: any) => {
           if (responseObject.errorCode !== 0) {
@@ -55,12 +146,11 @@ export function useMQTTConnection() {
           onSuccess: () => {
             console.log("Connected to MQTT broker");
             try {
+              // Subscribe to both the test topic and result topic
               console.log("Subscribing to expo/test");
-              client.subscribe('expo/test', {
-                qos: 0,
-                onSuccess: () => console.log("Successfully subscribed to expo/test"),
-                onFailure: (err: any) => console.error("Subscribe failed:", err)
-              });
+              client.subscribe('expo/test');
+              console.log("Subscribing to expo/result");
+              client.subscribe('expo/result');
             } catch (err) {
               console.error("Subscribe error:", err);
             }
@@ -88,6 +178,7 @@ export function useMQTTConnection() {
       if (clientRef.current?.isConnected()) {
         try {
           clientRef.current.unsubscribe('expo/test');
+          clientRef.current.unsubscribe('expo/result');
         } catch (err) {
           console.error("Unsubscribe error:", err);
         }
@@ -142,4 +233,4 @@ export function useMQTTConnection() {
     clearMessages,
     clearReceivedMessages,
   };
-} 
+}
