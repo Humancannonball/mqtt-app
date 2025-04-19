@@ -97,6 +97,14 @@ const client = new Paho.MQTT.Client(
 );
 ```
 
+I also enhanced the URL handling capabilities by implementing:
+- Protocol verification (adding https:// when missing)
+- Platform-specific opening strategies (web vs mobile)
+- WebBrowser implementation for in-app browsing experience
+- Fallback to system Linking when WebBrowser fails
+- JSON parsing for structured data responses
+- Multiple URL field detection from backend responses
+
 ### Running the EXPO Application
 
 I started the EXPO application with:
@@ -129,10 +137,19 @@ I modified the provided `mqtt_sub.py` file to connect to my MQTT broker:
 
 ```python
 # Configuration
-MQTT_TOPIC = "expo/test"
-MQTT_BROKER = "192.168.31.9"  # My broker's IP address
-MQTT_PORT = 1883  # Standard MQTT port
+MQTT_TOPIC_TEST = "expo/test"       # Topic to receive messages from EXPO app
+MQTT_TOPIC_RESULT = "expo/result"   # Topic to send results back to EXPO app
+MQTT_TOPIC_STATUS = "expo/status"   # Topic for status updates
+MQTT_BROKER = "192.168.31.9"        # Broker IP address
+MQTT_PORT = 1883                    # Standard MQTT port (not WebSocket)
 ```
+
+I implemented sophisticated message handling including:
+- Automatic reconnection with configurable delay
+- Comprehensive error handling with meaningful messages
+- Separate topics for commands, results, and status updates
+- Last will message configuration for unexpected disconnections
+- Status publishing to a dedicated topic for monitoring
 
 ### IMDB Search Functionality
 
@@ -171,6 +188,11 @@ I successfully established bidirectional communication between the EXPO app and 
 1. **EXPO to Python**: Messages sent from the EXPO app were properly received by the Python subscriber, with timestamps recorded.
 2. **Python to EXPO**: Responses were sent back to the `expo/result` topic and appeared in the EXPO app.
 
+The system uses three distinct MQTT topics for complete communication:
+- `expo/test`: Main channel for commands and messages from the app
+- `expo/result`: Channel for results and responses from the backend
+- `expo/status`: Monitoring channel for connection status and system messages
+
 ### 2. Command Handling
 
 The backend successfully processed different message formats:
@@ -193,6 +215,11 @@ The backend successfully processed different message formats:
    ```
 
 3. **Regular Messages**: Any other text was logged with a timestamp and echoed back to confirm receipt.
+
+The URL opening implementation features multiple layers of handling:
+1. Direct URL opening with the `open_url:` prefix for immediate action
+2. JSON data with embedded URL fields for richer content display
+3. Multiple URL field detection (`open_url`, `url_content`, `url`, `link`) for maximum compatibility
 
 ### 3. Working Code Demonstration
 

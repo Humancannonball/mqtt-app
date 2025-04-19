@@ -101,11 +101,17 @@ Update the MQTT connection in the `hooks/useMQTTConnection.ts` file to use your 
 ```typescript
 // Find this section in hooks/useMQTTConnection.ts
 const client = new Paho.MQTT.Client(
-  '192.168.x.x',  // Replace with your actual IP address
+  '192.168.31.9',  // Your actual IP address
   8000,           // WebSocket port
   `expo-mqtt-${Math.random().toString(16).substr(2, 8)}`
 );
 ```
+
+The EXPO app includes functionality to:
+- Handle direct URL opening with `open_url:` prefix messages
+- Process JSON formatted responses from the backend
+- Support multiple URL formats in responses
+- Open links using either WebBrowser or system Linking as fallback
 
 ### 3. Install Dependencies and Start the EXPO App
 ```bash
