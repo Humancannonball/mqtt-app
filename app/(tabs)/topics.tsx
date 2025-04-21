@@ -90,7 +90,19 @@ export default function TopicsScreen() {
     { 
       name: 'expo/test', 
       description: 'Test topic',
-      isSubscribed: false,
+      isSubscribed: true,
+      isPublishing: false
+    },
+    {
+      name: 'expo/result',
+      description: 'Returned result after requests send',
+      isSubscribed: true,
+      isPublishing: false
+    },
+    {
+      name: 'expo/status',
+      description: 'Technical messages appear',
+      isSubscribed: true,
       isPublishing: false
     },
     { 

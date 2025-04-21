@@ -12,8 +12,8 @@ For this lab, I opted to use Distrobox instead of VirtualBox as it provided a mo
 I created an Ubuntu 22.04 container using Distrobox:
 
 ```bash
-distrobox create --name SmartDevices --image ubuntu:22.04
-distrobox enter SmartDevices
+distrobox create --name mqtt-ubuntu --image ubuntu:22.04
+distrobox enter mqtt-ubuntu
 ```
 
 ### MQTT Broker Installation and Configuration
@@ -63,9 +63,9 @@ sudo netstat -tulnp | grep mosquitto
 The output confirmed the broker was operating correctly:
 
 ```
-tcp        0      0 0.0.0.0:1883            0.0.0.0:*               LISTEN      7683/mosquitto      
-tcp6       0      0 :::8000                 :::*                    LISTEN      7683/mosquitto      
-tcp6       0      0 :::1883                 :::*                    LISTEN      7683/mosquitto
+tcp        0      0 0.0.0.0:1883            0.0.0.0:*               LISTEN      2132/mosquitto      
+tcp6       0      0 :::8000                 :::*                    LISTEN      2132/mosquitto      
+tcp6       0      0 :::1883                 :::*                    LISTEN      2132/mosquitto
 ```
 
 I identified my IP address using:
@@ -74,7 +74,7 @@ I identified my IP address using:
 ip r
 ```
 
-Which returned my IP as `192.168.31.9` on the network `192.168.31.0/24`.
+Which returned my IP as `192.168.1.105` on the network `192.168.1.0/24`.
 
 ## EXPO Application Integration
 
@@ -91,7 +91,7 @@ I modified the MQTT connection parameters in the `hooks/useMQTTConnection.ts` fi
 
 ```typescript
 const client = new Paho.MQTT.Client(
-  '192.168.31.9',  // Updated to my IP address
+  '192.168.1.105',  // Updated to my IP address
   8000,           // Using WebSocket port
   `expo-mqtt-${Math.random().toString(16).substr(2, 8)}`
 );
@@ -108,9 +108,10 @@ npx expo start
 The application successfully launched and displayed a QR code that could be scanned with the Expo Go app. The logs confirmed connection to the MQTT broker:
 
 ```
-(NOBRIDGE) LOG  Connected to MQTT broker
-(NOBRIDGE) LOG  Subscribing to expo/test
-(NOBRIDGE) LOG  Successfully subscribed to expo/test
+ (NOBRIDGE) LOG  Connected to MQTT broker
+ (NOBRIDGE) LOG  Subscribing to expo/test
+ (NOBRIDGE) LOG  Subscribing to expo/result
+ (NOBRIDGE) LOG  Subscribing to expo/status
 ```
 
 ## Python Backend Integration
@@ -130,7 +131,7 @@ I modified the provided `mqtt_sub.py` file to connect to my MQTT broker:
 ```python
 # Configuration
 MQTT_TOPIC = "expo/test"
-MQTT_BROKER = "192.168.31.9"  # My broker's IP address
+MQTT_BROKER = "192.168.41.155"  # My broker's IP address
 MQTT_PORT = 1883  # Standard MQTT port
 ```
 
@@ -210,7 +211,7 @@ The implementation includes comprehensive error handling to ensure the search ne
        print(traceback.format_exc())  # Print full traceback for debugging
    ```
 
-3. **Default Results**: Always returns at least basic search information even if extraction fails
+3. **Default Results**: Always returns at least basic search information even if extraction fails and tries to open link both on pc and mobile device
    ```python
    def basic_result(query, url):
        """Create a basic result when detailed extraction fails"""
@@ -222,6 +223,7 @@ The implementation includes comprehensive error handling to ensure the search ne
                    'title': f"Search results for {query}",
                    'price': "See website for prices",
                    'image': "",
+                   'open_url': url,
                    'url': url
                }
            ]
@@ -250,8 +252,8 @@ The script confirmed successful connection:
 
 ```
 Created MQTT client using V2 API
-Connecting to MQTT broker at 192.168.31.9:1883...
-Connected to MQTT broker at 192.168.31.9
+Connecting to MQTT broker at 192.168.1.105:1883...
+Connected to MQTT broker at 192.168.1.105
 Subscribed to topic: expo/test
 ```
 
@@ -264,27 +266,43 @@ I successfully established bidirectional communication between the EXPO app and 
 1. **EXPO to Python**: Messages sent from the EXPO app were properly received by the Python subscriber, with timestamps recorded.
 2. **Python to EXPO**: Responses were sent back to the `expo/result` topic and appeared in the EXPO app.
 
+The system uses three distinct MQTT topics for complete communication:
+
+
+- `expo/test`: Main channel for commands and messages from the app
+
+
+- `expo/result`: Channel for results and responses from the backend
+
+
+- `expo/status`: Monitoring channel for connection status and system messages
+
 ### 2. Command Handling
 
 The backend successfully processed different message formats:
 
 1. **URL Opening**: Messages with the format `open:URL` triggered the backend to open the specified URL in a browser. For example:
    ```
-   [2025-04-12 16:20:15] Received message on expo/test: open:https://www.google.com
-   Opening URL: https://www.google.com
+   [2025-04-16 12:26:16] Received message on expo/test: open: Google.com
+   Opening URL:  Google.com
    ```
-
 2. **AliExpress Searches**: Messages with the format `ali:PRODUCT_NAME` triggered product searches, opening the relevant page and returning structured data:
    ```
-   [2025-04-12 17:13:30] Received message on expo/test: ali:Saw
-   Searching AliExpress for: Saw
-   Opening AliExpress search URL: https://www.aliexpress.com/wholesale?SearchText=Saw
-   No product cards found with main selectors, trying fallback selectors
-   Found 10 product links as fallback
-   Successfully extracted 5 products
-   Search completed in 1.84 seconds
-   Total search time: 1.84 seconds
-   AliExpress results published to expo/result
+    [2025-04-21 21:20:28] Received message on expo/test: ali:hook
+    Searching AliExpress for: hook
+    Searching AliExpress for: hook
+    Opening AliExpress search URL: https://www.aliexpress.com/wholesale?SearchText=hook
+    Detected locale "C" with character encoding "ANSI_X3.4-1968", which is not UTF-8.
+    Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead.
+    If this causes problems, reconfigure your locale. See the locale(1) manual
+    for more information.
+    No product cards found with main selectors, trying fallback selectors
+    Found 22 product links as fallback
+    Successfully extracted 5 products
+    Search completed in 2.12 seconds
+    Total search time: 2.12 seconds
+    AliExpress results published to expo/result
+
    ```
 
 3. **Regular Messages**: Any other text was logged with a timestamp and echoed back to confirm receipt.
