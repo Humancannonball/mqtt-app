@@ -8,7 +8,7 @@ import time
 
 # Configuration
 MQTT_TOPIC = "expo/test"  # Updated to match the EXPO app's topic
-MQTT_BROKER = "192.168.31.9"  # Updated to the local broker IP
+MQTT_BROKER = "192.168.1.105"  # Updated to the local broker IP
 MQTT_PORT = 1883  # Standard MQTT port (not WebSocket)
 RECONNECT_DELAY = 5  # Seconds to wait before reconnection attempts
 

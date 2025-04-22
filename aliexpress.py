@@ -336,6 +336,7 @@ def basic_result(query, url):
                 'title': f"Search results for {query}",
                 'price': "See website for prices",
                 'image': "",
+                # 'open_url': url,
                 'url': url
             }
         ]
