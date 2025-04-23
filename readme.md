@@ -1,5 +1,19 @@
 # EXPO and MQTT Integration Lab
 
+## ✅ Lab Completion Status
+**COMPLETED**: Both Lab 4 and Lab 5 tasks have been successfully implemented and tested.
+
+## 📑 Full Project Report
+The complete project report documenting both Lab 4 (EXPO and MQTT Integration) and Lab 5 (System Information and Monitoring) is available here:
+
+👉 [**View Detailed Project Report**](report.md)
+
+The report includes:
+- Detailed implementation steps for both labs
+- System information and monitoring results
+- Screenshots and technical explanations
+- Troubleshooting tips and solutions
+
 ## Objective
 Integrate an EXPO mobile application with an MQTT server and connect a backend subscriber that listens to messages from the EXPO app.
 

@@ -1,7 +1,11 @@
 # Laboratory Work: EXPO and MQTT Integration
 
+## Overview of Completed Tasks
+This report documents the successful completion of both Lab 4 (EXPO and MQTT Integration) and Lab 5 (System Information and Monitoring). Both laboratory tasks were implemented and tested successfully, creating a comprehensive IoT communication system with monitoring capabilities.
+
 ## Aim of the Work
-To integrate the provided EXPO application with an MQTT server and connect a backend subscriber that listens to messages from the EXPO mobile app.
+1. To integrate the provided EXPO application with an MQTT server and connect a backend subscriber that listens to messages from the EXPO mobile app (Lab 4)
+2. To implement system monitoring functionality that tracks system resources and responds to commands through MQTT (Lab 5)
 
 ## Environment Setup
 
@@ -15,6 +19,26 @@ I created an Ubuntu 22.04 container using Distrobox:
 distrobox create --name SmartDevices --image ubuntu:22.04
 distrobox enter SmartDevices
 ```
+
+### System Information
+When running the setup script, the following system information was displayed:
+
+```
+===== System Information =====
+Memory: 3063MB used / 3605MB total (84.97%)
+Free memory: 247MB, Available: 541MB
+
+Network Interfaces:
+  lo:
+    IPv4: 127.0.0.1
+    IPv6: ::1
+  wlp1s0:
+    IPv4: 192.168.60.254
+    IPv6: 2a00:1eb8:c051:98d3:e194:8255:145e:5943
+    IPv6: fe80::2cc5:b545:553b:aa4a
+```
+
+The system monitor successfully detected and displayed memory usage and network interfaces with their respective IP addresses.
 
 ### MQTT Broker Installation and Configuration
 
@@ -179,6 +203,80 @@ Connected to MQTT broker at 192.168.31.9
 Subscribed to topic: expo/test
 ```
 
+## Lab 5: System Monitoring Implementation
+
+In addition to the EXPO and MQTT integration from Lab 4, I successfully implemented the system monitoring features for Lab 5:
+
+### System Monitor Features
+
+1. **Command Processing System**: 
+   - Created a robust command handling system that listens on the `expo/command` topic
+   - Commands are processed and responses are sent back on `expo/response`
+   - Status updates are published on `expo/status`
+
+2. **File System Operations**:
+   - Implemented directory listing functionality (`list_directory` command)
+   - Added file creation capability (`create_file:filename|content` command)
+   - Included security checks to prevent path traversal attacks
+
+3. **System Information Collection**:
+   - Memory usage reporting (`get_memory` command)
+   - IP address information (`get_ip` command)
+   - Automatic system information display at startup
+
+4. **Integrated Startup Process**:
+   - Single setup script that launches all components:
+     - MQTT broker in Distrobox container
+     - EXPO application
+     - MQTT subscriber backend
+     - System monitoring service
+
+### Testing System Monitor Commands
+
+I verified all system monitor commands worked correctly:
+
+1. **List Directory**:
+   Sending `list_directory` to `expo/command` returned a JSON response with:
+   - Current working directory
+   - List of files
+   - File count
+   - Status and timestamp
+
+2. **Get IP Information**:
+   Sending `get_ip` to `expo/command` returned:
+   - Network interface names
+   - IPv4 and IPv6 addresses for each interface
+   - Address family information
+
+3. **Get Memory Information**:
+   Sending `get_memory` to `expo/command` returned:
+   - Total, used, and free memory in MB
+   - Shared, buffer/cache, and available memory
+   - Percentage of memory used
+
+4. **Create File**:
+   Sending `create_file:test.txt|Hello World` to `expo/command` resulted in:
+   - File creation with the specified content
+   - Response with the full path, file size, and creation timestamp
+
+### Improvements to System Robustness
+
+I added several enhancements to ensure system reliability:
+
+1. **Automatic Package Management**:
+   - Detection of missing Python packages
+   - Automatic installation of required dependencies
+   - Graceful failure handling with user-friendly error messages
+
+2. **API Version Compatibility**:
+   - Support for both Paho MQTT v1 and v2 APIs
+   - Automatic detection and adaptation to available API versions
+
+3. **Error Handling**:
+   - Comprehensive error handling for all operations
+   - Descriptive error messages with timestamps
+   - Proper cleanup on shutdown
+
 ## Results Achieved
 
 ### 1. End-to-End Communication
@@ -274,6 +372,8 @@ This laboratory work successfully demonstrated:
 3. Implementing a Python backend subscriber that listens for and processes messages
 4. Establishing bidirectional communication between the components
 5. Executing different actions based on received messages
-6. Understanding the key differences between MQTT protocols
+6. Collecting and reporting system information through MQTT commands
+7. Implementing file system operations via MQTT
+8. Understanding the key differences between MQTT protocols
 
-The implementation shows how MQTT can be effectively used as a lightweight communication protocol for IoT and mobile applications, enabling real-time, asynchronous messaging between different platforms and technologies.
+Both Lab 4 and Lab 5 tasks were completed successfully, resulting in a fully functional IoT communication and monitoring system that demonstrates the practical application of MQTT for both mobile app integration and system monitoring.
