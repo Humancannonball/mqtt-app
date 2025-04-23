@@ -24,11 +24,14 @@ Integrate an EXPO mobile application with an MQTT server and connect a backend s
 
 ### 1. Create an Ubuntu Container
 ```bash
-# Create a new Ubuntu container
-distrobox create --name mqtt-lab --image ubuntu:22.04
+# Create a new Ubuntu container with systemd support
+distrobox create --name mqtt-lab --image ubuntu:22.04 --init --additional-packages="systemd systemd-sysv"
 
 # Enter the container
 distrobox enter mqtt-lab
+
+# Enable systemd within the container (if needed)
+sudo systemctl daemon-reload
 ```
 
 ### 2. Update and Install Required Packages
@@ -101,7 +104,7 @@ Update the MQTT connection in the `hooks/useMQTTConnection.ts` file to use your 
 ```typescript
 // Find this section in hooks/useMQTTConnection.ts
 const client = new Paho.MQTT.Client(
-  '192.168.31.9',  // Your actual IP address
+  '192.168.60.254',  // Your actual IP address
   8000,           // WebSocket port
   `expo-mqtt-${Math.random().toString(16).substr(2, 8)}`
 );
